@@ -1,0 +1,53 @@
+#define F_CPU 16000000UL
+#include <avr/io.h>
+#include <util/delay.h>
+#include "adc1.h"
+#include "uart.h"
+char arr[100];
+
+int main(void)
+{
+	DDRA = 0;							//PORTC as input PORT for analog sensors
+	DDRB = 0B11111111;					//PORTB as OUTPUT PORT
+	
+	PORTB=0xff;
+	_delay_ms(100);
+	PORTB=0;
+	_delay_ms(100);
+	
+	adc();								// ADC initialization
+	u_init();							// usart initialization (serial communication)
+	
+	while(1)
+	{
+		ADCSRA|=(1<<ADSC);				// Start conversion 
+		while(!(ADCSRA&(1<<ADIF)));		// hold until conversion is completed
+		int as=ADC;                     //assigning the value of ADC in as variable	
+		usart_tx(as);		//Now transmitting the decimal value from controller 
+		usart_tx("\r\n");		
+		if(as>1000)  //mq9-CO
+		{
+			PORTB=0b0101; 
+			usart_tx(as);
+		}	
+		else 
+		{	
+			PORTB=0;		
+			
+			ADMUX = 0b11000010; //changing channel
+			ADCSRA|=(1<<ADSC);				// Start conversion
+			while(!(ADCSRA&(1<<ADIF)));		// hold until conversion is completed
+			int as=ADC;
+			if(as>740)
+			{
+				PORTB=0B0110;  
+				usart_tx(as);
+			}
+			else
+			{
+				PORTB=0;
+				PORTB=0B1000;
+			}
+		}								
+	}
+}
